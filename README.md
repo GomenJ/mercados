@@ -1,3 +1,224 @@
+demanda.py
+```
+from typing import TypedDict, Optional
+from datetime import datetime
+import requests
+import json
+
+SIN = [
+    "Central",
+    "Noreste",
+    "Noroeste",
+    "Norte",
+    "Occidental",
+    "Oriental",
+    "Peninsular",
+]
+BCS = ["Baja California Sur"]
+BCA = ["Baja California"]
+
+# Diccionario de números de gerencia
+MAPEO_GERENCIAS = {
+    1: "Baja California",
+    2: "Baja California Sur",
+    3: "Central",
+    4: "Noreste",
+    5: "Noroeste",
+    6: "Norte",
+    7: "Occidental",
+    8: "Oriental",
+    9: "Peninsular",
+}
+
+URL = "https://www.cenace.gob.mx/GraficaDemanda.aspx/obtieneValoresTotal"
+
+API_URL = "http://192.168.201.7:8081"
+
+CODE_STATUS = [200, 201]
+
+
+# Establece el tipo de datos para la gerencia
+class Gerencia(TypedDict):
+    hora: str
+    valorDemanda: str
+    valorGeneracion: str
+    valorEnlace: Optional[None]
+    valorPronostico: str
+
+
+# Establece el tipo de datos para la respuesta de la API
+class DataSchema(TypedDict):
+    FechaOperacion: str
+    Hora: int
+    Demanda: int
+    Generacion: int
+    Enlace: Optional[None]
+    Pronostico: int
+    Gerencia: str
+    Sistema: str
+    FechaCreacion: datetime
+    FechaModificacion: datetime
+
+
+def diferencia_en_porcentaje(a: int, b: int) -> tuple[float, str]:
+    # Added check for a == 0 to avoid ZeroDivisionError
+    if a == 0:
+        return (0.0, "división por cero")
+    diferencia = ((b - a) / a) * 100
+    direccion = (
+        "más alta" if diferencia > 0 else "más baja" if diferencia < 0 else "igual"
+    )
+    return (abs(round(diferencia, 2)), direccion)
+
+
+def obtener_sistema(gerencia_name: str) -> str:
+    if gerencia_name in BCA:
+        return "BCA"
+    elif gerencia_name in BCS:
+        return "BCS"
+    elif gerencia_name in SIN:
+        return "SIN"
+    return ""
+
+
+def enviar_peticion(
+    gerencia: Gerencia, hora: int, gerencia_name: str
+) -> requests.Response:
+    fecha_operacion = datetime.today().strftime("%Y-%m-%d")
+
+    data: DataSchema = {
+        "FechaOperacion": fecha_operacion,
+        "Hora": hora,
+        "Demanda": int(gerencia["valorDemanda"]),
+        "Generacion": int(gerencia["valorGeneracion"]),
+        "Enlace": gerencia["valorEnlace"] if gerencia["valorEnlace"] else None,
+        "Pronostico": int(gerencia["valorPronostico"]),
+        "Gerencia": gerencia_name,
+        "Sistema": obtener_sistema(gerencia_name),
+        "FechaCreacion": datetime.now(),
+        "FechaModificacion": datetime.now(),
+    }
+
+    return requests.post(API_URL, json=data)
+
+
+def obtener_demanda():
+    for gerencia in MAPEO_GERENCIAS:
+        # Datos que se enviarán en la solicitud (formato JSON)
+        data = {"gerencia": f"{gerencia}"}
+
+        # Encabezados de la solicitud
+        headers = {
+            "Content-Type": "application/json; charset=UTF-8",
+        }
+
+        # Realizar la solicitud POST con los datos y encabezados proporcionados
+        response = requests.post(URL, json=data, headers=headers)
+        if response.status_code != 200:
+            print(
+                f"Error al realizar la solicitud. Código de estado: {response.status_code}"
+            )
+            return
+
+        # Obtener la respuesta en formato JSON
+        json_data = response.json()
+
+        # Cargar la cadena JSON asociada a la clave "d" en un formato JSON válido
+        d_json = json.loads(json_data["d"])
+
+        # Elimina la hora 24 al final de la lista ya que nunca se actualiza en
+        # el día actual
+        d_json_actualizado: list[Gerencia] = d_json[: len(d_json) - 1]
+        print("d_json", d_json_actualizado)
+
+        # Checamos si existe la hora 24 al inicio de la lista ya que esto
+        # significa que tenemos datos de la hora 00
+        if d_json_actualizado[0]["hora"] == "24":
+            print("Hora 00 encontrada")
+            hora_00 = d_json_actualizado[0]
+            print("hora_00", hora_00)
+            response = enviar_peticion(hora_00, 0, MAPEO_GERENCIAS[gerencia])
+            # Check the response status
+            if response.status_code in [200, 201]:  # SUCCESS Codes
+                print(
+                    f"Petición para Hora 00 enviada con éxito (Status: {response.status_code})."
+                )
+                # Perform success actions (like percentage check)
+                porcentaje, direccion = diferencia_en_porcentaje(
+                    int(hora_00["valorDemanda"]), int(hora_00["valorGeneracion"])
+                )
+
+                if porcentaje >= 15:
+                    print(
+                        f"    -> Alerta Hora 00: La demanda es {direccion} en un {porcentaje}% respecto a la generación."
+                    )
+            elif response.status_code == 409:  # KNOWN CONFLICT
+                print(
+                    "Petición para Hora 00: Dato ya existe en la base de datos (Status 409)."
+                )
+            else:  # UNEXPECTED ERROR
+                print(
+                    f"Error al enviar la petición para Hora 00. Código de estado: {response.status_code}"
+                )
+                # You might want to print response.text here too for debugging
+                # print(f"    -> Response body: {response.text}")
+
+        # Obtenemos la hora actual para obtener solo la hora que corresponde
+        # de la lista
+        ahora = datetime.now()
+        hora_actual = ahora.strftime("%H").lstrip("0")  # H
+
+        # Obtener el valor de la hora actual
+        valor_hora_actual = next(
+            (
+                elemento
+                for elemento in d_json_actualizado
+                if elemento["hora"] == hora_actual
+            ),
+            None,
+        )
+
+        # Si no se encuentra la hora actual, se retorna y se envia un mensaje
+        if valor_hora_actual is None or valor_hora_actual["valorDemanda"] == " ":
+            print("No hay datos disponibles para la hora actual")
+            continue
+
+        response = enviar_peticion(
+            valor_hora_actual, int(hora_actual), MAPEO_GERENCIAS[gerencia]
+        )
+        # Check the response status
+        if response.status_code in [200, 201]:  # SUCCESS Codes
+            print(
+                f"Petición para Hora {hora_actual} enviada con éxito (Status: {response.status_code})."
+            )
+            # Perform success actions (like percentage check)
+            porcentaje, direccion = diferencia_en_porcentaje(
+                int(valor_hora_actual["valorDemanda"]),
+                int(valor_hora_actual["valorGeneracion"]),
+            )
+
+            print("result", valor_hora_actual)
+            if porcentaje >= 15:
+                print(
+                    f"La demanda es {direccion} en un {porcentaje}% respecto a la generación."
+                )
+            continue
+
+        elif response.status_code == 409:  # KNOWN CONFLICT
+            print(
+                f"Petición para Hora {hora_actual}: Dato ya existe en la base de datos (Status 409)."
+            )
+            continue
+
+        else:  # UNEXPECTED ERROR
+            print(
+                f"Error al enviar la petición para Hora {hora_actual}. Código de estado: {response.status_code}"
+            )
+            continue
+
+
+obtener_demanda()
+```
 models.py
 ```py
 # models.py (Revised for 'id' Primary Key)
