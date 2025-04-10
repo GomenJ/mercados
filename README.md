@@ -1,3 +1,45 @@
+# --- App Configuration -------------------------------------------------------
+from urllib.parse import quote_plus   # NEW – to URL‑encode the ODBC connection string
+
+app = Flask(__name__)
+
+# ----------------------------------------------------------------------------- 
+# 1. Build a SQL Server URL (unless DATABASE_URL is already set)
+#    SQLAlchemy’s canonical form is:
+#       mssql+pyodbc://<user>:<password>@<server>:<port>/<database>?driver=<driver>
+#    We URL‑encode the driver name because it contains spaces.
+# -----------------------------------------------------------------------------
+if "DATABASE_URL" in os.environ:
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
+else:
+    DRIVER = "ODBC Driver 17 for SQL Server"   # or 18, 11, etc.
+    USER   = os.getenv("DB_USER",     "sa")
+    PASS   = os.getenv("DB_PASSWORD", "yourStrong(!)Password")
+    SERVER = os.getenv("DB_SERVER",   "localhost")   # "hostname,1433" if a custom port
+    DBNAME = os.getenv("DB_NAME",     "demand_data")
+
+    odbc_str = f"DRIVER={{{DRIVER}}};SERVER={SERVER};DATABASE={DBNAME};UID={USER};PWD={PASS}"
+    params   = quote_plus(odbc_str)               # URL‑encode the whole thing
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"mssql+pyodbc:///?odbc_connect={params}"
+
+# ----------------------------------------------------------------------------- 
+# 2. Other common Flask‑SQLAlchemy flags
+# -----------------------------------------------------------------------------
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JSON_AS_ASCII"] = False
+
+db.init_app(app)
+
+# --- Database Creation --------------------------------------------------------
+with app.app_context():
+    print("INFO: Creating database tables if they don't exist...")
+    try:
+        # 3. The sqlite‑specific folder check is gone – not needed for SQL Server
+        db.create_all()
+        print("INFO: Database tables checked/created.")
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to create/check database tables: {e}")
+
 ```txt
 blinker==1.9.0
 click==8.1.8
