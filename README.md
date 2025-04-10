@@ -1,3 +1,123 @@
+ ```sh
+INFO:app:Request received on /submit-data at 2025-04-09T23:34:59.073363
+INFO:app:Received record content: {'FechaOperacion': '2025-04-09', 'Hora': 0, 'Demanda': 1958, 'Generacion': 1888, 'Enlace': None, 'Pronostico': 1983, 'Gerencia': 'Baja California', 'Sistema': 'BCA'}
+ERROR:app:Database operation failed for (datetime.date(2025, 4, 9), 0, 'Baja California'): (pyodbc.ProgrammingError) ('42S22', "[42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Invalid column name 'Hora'. (207) (SQLExecDirectW); [42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Invalid column name 'Hora'. (207); [42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Statement(s) could not be prepared. (8180)")
+[SQL: SELECT TOP 1 [Demanda].id AS [Demanda_id], [Demanda].[FechaOperacion] AS [Demanda_FechaOperacion], [Demanda].[Hora] AS [Demanda_Hora], [Demanda].[Gerencia] AS [Demanda_Gerencia], [Demanda].[Demanda] AS [Demanda_Demanda], [Demanda].[Generacion] AS [Demanda_Generacion], [Demanda].[Pronostico] AS [Demanda_Pronostico], [Demanda].[Enlace] AS [Demanda_Enlace], [Demanda].[Sistema] AS [Demanda_Sistema], [Demanda].[FechaCreacion] AS [Demanda_FechaCreacion], [Demanda].[FechaModificacion] AS [Demanda_FechaModificacion] 
+FROM [Demanda] 
+WHERE [Demanda].[FechaOperacion] = ? AND [Demanda].[Hora] = ? AND [Demanda].[Gerencia] = ?]       
+[parameters: (datetime.datetime(2025, 4, 9, 0, 0), 0, 'Baja California')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Traceback (most recent call last):
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 942, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+pyodbc.ProgrammingError: ('42S22', "[42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Invalid column name 'Hora'. (207) (SQLExecDirectW); [42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Invalid column name 'Hora'. (207); [42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Statement(s) could not be prepared. (8180)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\becario.desarrollo\Desktop\luxem\lux\mercados_backend\app.py", line 168, in submit_data_single
+    FechaOperacion=fecha_op, Hora=hora, Gerencia=gerencia).first()
+                                                           ~~~~~^^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\query.py", line 2754, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\query.py", line 2853, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1416, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\sql\elements.py", line 516, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1638, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1843, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1983, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 2352, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\becario.desarrollo\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 942, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (pyodbc.ProgrammingError) ('42S22', "[42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Invalid column name 'Hora'. (207) (SQLExecDirectW); [42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Invalid column name 'Hora'. (207); [42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Statement(s) could not be prepared. (8180)")     
+[SQL: SELECT TOP 1 [Demanda].id AS [Demanda_id], [Demanda].[FechaOperacion] AS [Demanda_FechaOperacion], [Demanda].[Hora] AS [Demanda_Hora], [Demanda].[Gerencia] AS [Demanda_Gerencia], [Demanda].[Demanda] AS [Demanda_Demanda], [Demanda].[Generacion] AS [Demanda_Generacion], [Demanda].[Pronostico] AS [Demanda_Pronostico], [Demanda].[Enlace] AS [Demanda_Enlace], [Demanda].[Sistema] AS [Demanda_Sistema], [Demanda].[FechaCreacion] AS [Demanda_FechaCreacion], [Demanda].[FechaModificacion] AS [Demanda_FechaModificacion]
+FROM [Demanda]
+WHERE [Demanda].[FechaOperacion] = ? AND [Demanda].[Hora] = ? AND [Demanda].[Gerencia] = ?]       
+[parameters: (datetime.datetime(2025, 4, 9, 0, 0), 0, 'Baja California')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+INFO:app:Request finished in 0.66 seconds. Outcome: error
+INFO:werkzeug:127.0.0.1 - - [09/Apr/2025 23:34:59] "POST /submit-data HTTP/1.1" 500 -`
+```
 # --- App Configuration -------------------------------------------------------
 from urllib.parse import quote_plus   # NEW – to URL‑encode the ODBC connection string
 
